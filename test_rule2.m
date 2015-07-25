@@ -17,13 +17,10 @@ clc;
 %% initialize parameters
 global space_lims       % size of space where agents move in
 space_lims = 100*[1,1,1]; %[x,y,z]
-
+global step_size
+step_size = 0.02;
 num_agents = 3;     % number of agents
 
-%global agent_list  % list of the ID and position of all agents
-% initialization not necessary --> is handled by the 'swarm_agent' class
-    % agent_list.pos = zeros(3,num_agents); % position = column vector
-    % agent_list.handle = []; % handle to agent objects
 
 % agent parameters
 view_dist = 0.5;  % [m] how far can the agent see

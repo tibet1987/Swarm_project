@@ -118,6 +118,11 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
             ID = obj.ID;
         end
         
+        function m = getMass( obj ) 
+        % return velocity vector of this swarm agent
+            m = obj.m;
+        end
+        
         function ID = getNeighborIDs( obj ) 
         % return velocity vector of this swarm agent
             ID = obj.viewable_neighbor;
@@ -146,6 +151,24 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
             end
         end
         
+        function updateNeighborList(obj)
+            global agent_list
+
+            % looking through agent list if someone is in viewable range
+            for i=1:numel(agent_list)
+                % how far away is this agent
+                dist = obj.calcDistance(agent_list(i).handle);
+                % is this agent already in neighbor list?
+                alreadyInList = ~isempty( find(obj.getNeighborIDs() == agent_list(i).handle.getID(),1,'first') );
+                if dist <= obj.view_dist
+                    obj.appendNeighbor( agent_list(i).handle.getID() );
+                elseif dist > obj.view_dist && alreadyInList
+                    obj.removeNeighbor( agent_list(i).handle.getID() );
+                end
+            end
+
+        end
+        
         function dist = calcDistance(obj, neighbor)
         % distance = scalar product of vector pointing from obj to neighbor
             pointer_to_neighbor = obj.getPos() - neighbor.getPos();
@@ -165,39 +188,27 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
 %             rating = gaussmf(dist,[sig c]);
         end
         
-        function updateNeighborList(obj)
-            global agent_list
-
-            % looking through agent list if someone is in viewable range
-            for i=1:numel(agent_list)
-                % how far away is this agent
-                dist = obj.calcDistance(agent_list(i).handle);
-                % is this agent already in neighbor list?
-                alreadyInList = ~isempty( find(obj.getNeighborIDs() == agent_list(i).handle.getID(),1,'first') );
-                if dist <= obj.view_dist
-                    obj.appendNeighbor( agent_list(i).handle.getID() );
-                elseif dist > obj.view_dist && alreadyInList
-                    obj.removeNeighbor( agent_list(i).handle.getID() );
-                end
-            end
-
+        function x_dot = dynamics(obj,force)
+            % this function contains the dynamic equations of the system
+            % 'x' and 'u' are 2-dimensional column vectors
+            x = [obj.pos ; obj.vel];
+            u = force;
+            A = [0, 1;
+                 0, 0];
+            B = [0; 1/obj.getMass()];
+            x_dot = A*x + B*u;
         end
-            
-
+        
+        function updateDynamics(obj,forces)
+            % solving dynamics with euler forward
+            x_dot = dynamics( obj.pos, obj.vel, forces, obj.m );
+            obj.pos = obj.pos + step_size*x_dot(1);
+            obj.vel = obj.vel + step_size*x_dot(2);
+        end
+        
     end
     %%%%%%%%%%%%%%%%
     methods(Static)
-        
-        function x_dot = dynamics(pos,vel,forces,m)
-            % this function contains the dynamic equations of the system
-            % 'x' and 'u' are 2-dimensional column vectors
-            x = [pos; vel];
-            u = forces;
-            A = [0, 1;
-                 0, 0];
-            B = [0; 1/m];
-            x_dot = A*x + B*u;
-        end
         
         function plot_swarm( obj )
             global space_lims 
@@ -222,6 +233,7 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
                 agent_list(i).handle.updateNeighborList();
             end
             
+            % updating states of movement dynamics
             global step_size
             for i=1:numel(agent_list)
                 % calculating forces of the 3 laws
@@ -234,10 +246,8 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
                 forces = neighbor_midpoint_force + neighbor_dist_force...
                             + neighbor_dir_force + urge_force;
                         
-                % solving dynamics with euler forward
-                x_dot = dynamics(agent_list(i).pos,agent_list(i).vel,forces,obj(i).m);
-                agent_list(i).pos = agent_list(i).pos + step_size*x_dot(1);
-                agent_list(i).vel = agent_list(i).vel + step_size*x_dot(2);
+                % update dynamic (mechanical) states
+                agent_list(i).updateDynamics(forces);
                 
             end
         end
