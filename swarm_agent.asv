@@ -56,7 +56,7 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
         global agent_list
         
             % default settings for agent
-            obj.ID = numel(agent_list)+1;
+            ID = numel(agent_list)+1;
             view_dist = 0.5;
             m = 0.3;
             k_dist = 10;
@@ -95,8 +95,10 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
             % adding new object to agent_list
             if isempty(agent_list)
                 agent_list(1).handle = handle(obj); 
+                agent_list(1).pos = pos;
             else
                 agent_list(end+1).handle = handle(obj);
+                agent_list(end+1).pos = pos;
                 
                 % looking for neighbors that are already around
                 obj.updateNeighborList();
@@ -170,19 +172,37 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
 
             % looking through agent list if someone is in viewable range
             for i=1:numel(agent_list)
-                % how far away is this agent
                 dist = obj.calcDistance(agent_list(i).handle);
-                % is this agent already in neighbor list?
-                alreadyInList = ~isempty( find(obj.getNeighborIDs() == agent_list(i).handle.getID(),1,'first') );
-                if dist <= obj.view_dist
+                if dist < obj.view_dist
                     obj.appendNeighbor( agent_list(i).handle.getID() );
-                elseif dist > obj.view_dist && alreadyInList
-                    obj.removeNeighbor( agent_list(i).handle.getID() );
                 end
             end
 
         end
             
+        function obj = update( obj )
+            % looking for new neighbors nearby
+            
+            
+            global step_size
+            for i=1:numel(obj)
+                % calculating forces of the 3 laws
+                neighbor_midpoint_force =  zeros(3,1);
+                neighbor_dist_force = obj.calcNeighborDistForce();
+                neighbor_dir_force =  zeros(3,1);
+                urge_force = zeros(3,1);
+                
+                % vector sum of all forces pulling/pushing on the agent
+                forces = neighbor_midpoint_force + neighbor_dist_force...
+                            + neighbor_dir_force + urge_force;
+                        
+                % solving dynamics with euler forward
+                x_dot = dynamics(obj(i).pos,obj(i).vel,forces,obj(i).m);
+                obj(i).pos = obj(i).pos + step_size*x_dot(1);
+                obj(i).vel = obj(i).vel + step_size*x_dot(2);
+                
+            end
+        end
 
     end
     %%%%%%%%%%%%%%%%
@@ -215,32 +235,6 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
             set(gcf,'position',[10,40,1600,900]);
         end
         
-        function update()
-            global agent_list
-            % looking for new neighbors nearby
-            for i=1:numel(agent_list)
-                agent_list(i).handle.updateNeighborList();
-            end
-            
-            global step_size
-            for i=1:numel(agent_list)
-                % calculating forces of the 3 laws
-                neighbor_midpoint_force =  zeros(3,1);
-                neighbor_dist_force = agent_list(i).calcNeighborDistForce();
-                neighbor_dir_force =  zeros(3,1);
-                urge_force = zeros(3,1);
-                
-                % vector sum of all forces pulling/pushing on the agent
-                forces = neighbor_midpoint_force + neighbor_dist_force...
-                            + neighbor_dir_force + urge_force;
-                        
-                % solving dynamics with euler forward
-                x_dot = dynamics(agent_list(i).pos,agent_list(i).vel,forces,obj(i).m);
-                agent_list(i).pos = agent_list(i).pos + step_size*x_dot(1);
-                agent_list(i).vel = agent_list(i).vel + step_size*x_dot(2);
-                
-            end
-        end
     end
 end
 

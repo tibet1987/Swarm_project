@@ -20,7 +20,7 @@ space_lims = 100*[1,1,1]; %[x,y,z]
 
 num_agents = 3;     % number of agents
 
-global agent_list  % list of the ID and position of all agents
+%global agent_list  % list of the ID and position of all agents
 % initialization not necessary --> is handled by the 'swarm_agent' class
     % agent_list.pos = zeros(3,num_agents); % position = column vector
     % agent_list.handle = []; % handle to agent objects
@@ -36,26 +36,22 @@ d_neighbor_dist = 1; % virtual damping between too close neighbors and agent
 
 % creating agents
 myagent(1) = swarm_agent(   [0,0,0]',0  *[0,0,0]','view_dist',0.5,...
-                'ID',1,'mass',mass,'k_neighbor_dist',k_neighbor_dist,...
+                'mass',mass,'k_neighbor_dist',k_neighbor_dist,...
                 'd_neighbor_dist',d_neighbor_dist);
-agent_list(1).handle = myagent(1);
 %%%%%%%%%%%%%%%
-myagent(2) = swarm_agent(10*[1,0,0]',-0.1*[1,0,0]','view_dist',0.5,...
-                'ID',2,'mass',mass,'k_neighbor_dist',k_neighbor_dist,...
+myagent(2) = swarm_agent(0.8*[1,0,0]',-0.1*[1,0,0]','view_dist',0.5,...
+                'mass',mass,'k_neighbor_dist',k_neighbor_dist,...
                 'd_neighbor_dist',d_neighbor_dist);
-agent_list(2).handle = myagent(2);
 %%%%%%%%%%%%%%%
-myagent(3) = swarm_agent(5*[0,1,1]',0.1*[1,1,0]','view_dist',0.5,...
-                'ID',3,'mass',mass,'k_neighbor_dist',k_neighbor_dist,...
+myagent(3) = swarm_agent(0.2*[0,1,1]',0.1*[1,1,0]','view_dist',0.5,...
+                'mass',mass,'k_neighbor_dist',k_neighbor_dist,...
                 'd_neighbor_dist',d_neighbor_dist);
-agent_list(3).handle = myagent(3);
 
-
+            
 % testing some agent operations
-agent_distance = myagent(1).calcDistance(myagent(2))
-myagent(1).appendNeighbor(2);
-myagent(1).appendNeighbor(3);
-myagent.getNeighborIDs()
+% agent_distance = myagent(1).calcDistance(myagent(2))
+% myagent.getNeighborIDs()
+
 
 % myagent.updateNeighborList()
 
