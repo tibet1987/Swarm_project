@@ -11,7 +11,7 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
         %   these values are accessible via 'get...' functions
         pos    % current position vector of the agent
         vel    % current velocity vector of the agent
-        viewable_neighbor % list of neighbors in viewable distance
+        viewable_neighbor_ID % list of neighbors in viewable distance
         
         % parameters (static during simulation)
         ID           % unique ID number
@@ -57,11 +57,11 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
         
             % default settings for agent
             obj.ID = numel(agent_list)+1;
-            view_dist = 0.5;
-            m = 0.3;
-            k_dist = 10;
-            d_dist = 1;
-            viewable_neighbor = [];
+            obj.view_dist = 0.5;
+            obj.m = 0.3;
+            obj.k_dist = 10;
+            obj.d_dist = 1;
+            obj.viewable_neighbor_ID = [];
             
             % checking varargin
             if mod(nargin,2) ~= 0
@@ -125,19 +125,19 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
         
         function ID = getNeighborIDs( obj ) 
         % return velocity vector of this swarm agent
-            ID = obj.viewable_neighbor;
+            ID = obj.viewable_neighbor_ID;
         end
         
         function appendNeighbor( obj, neighborID )
         % add a new neighbor ID to agents list of viewable neighbors
-            obj.viewable_neighbor(end+1) = neighborID;
+            obj.viewable_neighbor_ID(end+1) = neighborID;
         % sorting neighbor IDs in ascending order
-            obj.viewable_neighbor = sort(obj.viewable_neighbor);
+            obj.viewable_neighbor_ID = sort(obj.viewable_neighbor_ID);
         end
         
         function found = removeNeighbor( obj, neighbor_ID )
         % remove a neighbor ID from agents list of viewable neighbors
-            idx = find(obj.viewable_neighbor == neighbor_ID);
+            idx = find(obj.viewable_neighbor_ID == neighbor_ID);
             if isempty(idx)
                 found = 0;
                 disp(['Method ''removeNeighbor'' of object in class',...
@@ -145,13 +145,13 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
                     'remove neighbor']);
             else
                 found = 1;
-                obj.viewable_neighbor(idx) = [];
+                obj.viewable_neighbor_ID(idx) = [];
                 % sorting entries in ascending order
-                obj.viewable_neighbor = sort(obj.viewable_neighbor);
+                obj.viewable_neighbor_ID = sort(obj.viewable_neighbor_ID);
             end
         end
         
-        function updateNeighborList(obj)
+        function updateNeighborList( obj )
             global agent_list
 
             % looking through agent list if someone is in viewable range
@@ -160,27 +160,43 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
                 dist = obj.calcDistance(agent_list(i).handle);
                 % is this agent already in neighbor list?
                 alreadyInList = ~isempty( find(obj.getNeighborIDs() == agent_list(i).handle.getID(),1,'first') );
-                if dist <= obj.view_dist
+                if dist <= obj.view_dist  &&  obj.ID ~= agent_list(i).handle.getID()
                     obj.appendNeighbor( agent_list(i).handle.getID() );
-                elseif dist > obj.view_dist && alreadyInList
+                elseif dist > obj.view_dist  &&  alreadyInList
                     obj.removeNeighbor( agent_list(i).handle.getID() );
                 end
             end
 
         end
         
-        function dist = calcDistance(obj, neighbor)
+        function dist = calcDistance( obj, neighbor )
         % distance = scalar product of vector pointing from obj to neighbor
             pointer_to_neighbor = obj.getPos() - neighbor.getPos();
             dist = sqrt(  dot(pointer_to_neighbor,pointer_to_neighbor)  ); 
         end
         
-        function force = calcNeighborDistForce(obj, neighbor)
+        function force_vec = calcAllForces( obj )
+            % calculating forces of the 3 laws:
+            
+            % Law 1: midpoint force
+            neighbor_midpoint_force =  zeros(3,1);
+            
+            % Law 2: neighbor distance force
+            neighbor_dist_force = zeros(3,1);
+            neighbor_IDs = obj.viewable_neighbor_ID;
+            for i=1:numel(neighbor_IDs)
+                neighbor = getHandleOfAgent(neighbor_IDs(i));
+                neighbor_dist_force = neighbor_dist_force - obj.k_dist * (neighbor.getPos() - obj.pos); % Hooke's Law: F = -k*x
+            end
 
-            dist = obj.calc_distance(neighbor);
-            
-            force = obj.k_dist * dist; % Hooke's Law: F = k*x
-            
+            % Law 3: neighbor direction/heading force
+            neighbor_dir_force =  zeros(3,1);
+            urge_force = zeros(3,1);
+
+            % vector sum of all forces pulling/pushing on the agent
+            force_vec = neighbor_midpoint_force + neighbor_dist_force...
+                        + neighbor_dir_force + urge_force;
+                    
 %         % Gaussian approach (3D-Gaussian) to rate 
 %             c = 0; % center is always zero
 %             sigma_norm = sqrt(1/(2*log(100))); % normalizing sigma to gaussmf(1) = 0.01;
@@ -188,69 +204,29 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
 %             rating = gaussmf(dist,[sig c]);
         end
         
-        function x_dot = dynamics(obj,force)
-            % this function contains the dynamic equations of the system
+        function updateDynamics( obj, force )
+            global step_size
+            % evaluating the dynamic equations
             % 'x' and 'u' are 2-dimensional column vectors
-            x = [obj.pos ; obj.vel];
-            u = force;
-            A = [0, 1;
-                 0, 0];
-            B = [0; 1/obj.getMass()];
-            x_dot = A*x + B*u;
-        end
-        
-        function updateDynamics(obj,forces)
-            % solving dynamics with euler forward
-            x_dot = dynamics( obj.pos, obj.vel, forces, obj.m );
-            obj.pos = obj.pos + step_size*x_dot(1);
-            obj.vel = obj.vel + step_size*x_dot(2);
+            for coord=1:3 % iterate over x,y,z direction
+                x = [obj.pos(coord) ; obj.vel(coord)];
+    %                [x,y,z , dx,dy,dz]
+                u = force(coord);
+                A = [0, 1;
+                     0, 0];
+                B = [0; 1/obj.getMass()];
+                x_dot = A*x + B*u;
+
+                % solving dynamics with euler forward
+                obj.pos(coord) = obj.pos(coord) + step_size*x_dot(1);
+                obj.vel(coord) = obj.vel(coord) + step_size*x_dot(2);
+            end
         end
         
     end
     %%%%%%%%%%%%%%%%
     methods(Static)
-        
-        function plot_swarm( obj )
-            global space_lims 
-            for i=1:numel(obj)
-%                 scatter3(obj(i).pos(1),obj(i).pos(2),obj(i).pos(3),'*','MarkerSize',20)
-                scatter3(obj(i).pos(1),obj(i).pos(2),obj(i).pos(3),1000,'.')
-                hold all
-            end
-            hold off
-            xlim([-space_lims(1),space_lims(1)])
-            ylim([-space_lims(2),space_lims(2)])
-            zlim([-space_lims(3),space_lims(3)])
-            view(0,90); % view from above
-            
-            set(gcf,'position',[10,40,1600,900]);
-        end
-        
-        function update()
-            global agent_list
-            % looking for new neighbors nearby
-            for i=1:numel(agent_list)
-                agent_list(i).handle.updateNeighborList();
-            end
-            
-            % updating states of movement dynamics
-            global step_size
-            for i=1:numel(agent_list)
-                % calculating forces of the 3 laws
-                neighbor_midpoint_force =  zeros(3,1);
-                neighbor_dist_force = agent_list(i).calcNeighborDistForce();
-                neighbor_dir_force =  zeros(3,1);
-                urge_force = zeros(3,1);
-                
-                % vector sum of all forces pulling/pushing on the agent
-                forces = neighbor_midpoint_force + neighbor_dist_force...
-                            + neighbor_dir_force + urge_force;
-                        
-                % update dynamic (mechanical) states
-                agent_list(i).updateDynamics(forces);
-                
-            end
-        end
+
     end
 end
 

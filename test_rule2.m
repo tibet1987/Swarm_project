@@ -16,10 +16,9 @@ clc;
 
 %% initialize parameters
 global space_lims       % size of space where agents move in
-space_lims = 100*[1,1,1]; %[x,y,z]
+space_lims = 5*[1,1,1]; %[x,y,z]
 global step_size
 step_size = 0.02;
-num_agents = 3;     % number of agents
 
 
 % agent parameters
@@ -36,13 +35,13 @@ myagent(1) = swarm_agent(   [0,0,0]',0  *[0,0,0]','view_dist',0.5,...
                 'mass',mass,'k_neighbor_dist',k_neighbor_dist,...
                 'd_neighbor_dist',d_neighbor_dist);
 %%%%%%%%%%%%%%%
-myagent(2) = swarm_agent(0.8*[1,0,0]',-0.1*[1,0,0]','view_dist',0.5,...
+myagent(2) = swarm_agent(2*[1,0,0]',-2*[1,0,0]','view_dist',0.5,...
                 'mass',mass,'k_neighbor_dist',k_neighbor_dist,...
                 'd_neighbor_dist',d_neighbor_dist);
 %%%%%%%%%%%%%%%
-myagent(3) = swarm_agent(0.2*[0,1,1]',0.1*[1,1,0]','view_dist',0.5,...
-                'mass',mass,'k_neighbor_dist',k_neighbor_dist,...
-                'd_neighbor_dist',d_neighbor_dist);
+% myagent(3) = swarm_agent(0.2*[0,1,1]',0.1*[1,1,0]','view_dist',0.5,...
+%                 'mass',mass,'k_neighbor_dist',k_neighbor_dist,...
+%                 'd_neighbor_dist',d_neighbor_dist);
 
             
 % testing some agent operations
@@ -52,11 +51,11 @@ myagent(3) = swarm_agent(0.2*[0,1,1]',0.1*[1,1,0]','view_dist',0.5,...
 
 % myagent.updateNeighborList()
 
-% for i=1:50
-%     myagent.plotSwarm(myagent);
-%     myagent.update();
-%     drawnow;
-%     pause(0.05)
-% end
+for i=1:80
+    plotSwarm();
+    updateSwarm();
+    drawnow;
+    pause(0.05)
+end
 
 
