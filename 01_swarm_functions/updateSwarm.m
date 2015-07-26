@@ -7,6 +7,7 @@ function updateSwarm()
 
     % updating states of movement dynamics
     global step_size
+    forces = zeros(3,numel(agent_list));
     for i=1:numel(agent_list)
         % IMPORTANT: 
         %   FIRST:  Calculate respecive forces based on current states

@@ -2,7 +2,7 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
     % This class creates agents that live in a swarm
     % The agents follow three basic rules:
     %  1. Move towards the midpoint of those agents you see in your surrounding
-    %  2. Move away if someone get too close to you
+    %  2. Move away if someone gets too close to you
     %  3. Move approximately in the same direction as your neighbors
     % (C) 2015 Timo Benzel
     
@@ -53,7 +53,7 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
         %  object of class 'swarm_agent'
         %
         % (C) 2015 Timo Benzel
-        global agent_list
+        global agent_list active_swarm_laws
         
             % default settings for agent
             obj.ID = numel(agent_list)+1;
@@ -62,6 +62,10 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
             obj.k_dist = 1;
             obj.d_dist = 0.08;
             obj.viewable_neighbor_ID = [];
+            if isempty(active_swarm_laws)
+                % if not defined otherwise: enable all swarm laws
+                active_swarm_laws = [1,1,1];  
+            end
             
             % checking varargin
             if mod(nargin,2) ~= 0
@@ -156,11 +160,15 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
 
             % looking through agent list if someone is in viewable range
             for i=1:numel(agent_list)
+
                 % how far away is this agent
                 dist = obj.calcDistance(agent_list(i).handle);
+                
                 % is this agent already in neighbor list?
                 alreadyInList = ~isempty( find(obj.getNeighborIDs() == agent_list(i).handle.getID(),1,'first') );
-                if dist <= obj.view_dist  &&  obj.ID ~= agent_list(i).handle.getID()
+                object_is_not_myself = obj.ID ~= agent_list(i).handle.getID();
+                
+                if dist <= obj.view_dist  && object_is_not_myself && ~alreadyInList
                     obj.appendNeighbor( agent_list(i).handle.getID() );
                 elseif dist > obj.view_dist  &&  alreadyInList
                     obj.removeNeighbor( agent_list(i).handle.getID() );
@@ -176,15 +184,19 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
         end
         
         function force_vec = calcAllForces( obj )
-            
             % calculating forces of the 3 laws:
-
+            global active_swarm_laws
+            
             % Law 1: midpoint force
-            neighbor_midpoint_force =  zeros(3,1);
+            neighbor_midpoint_force =  zeros(3,1); % init
+            if active_swarm_laws(1) == 0
+                neighbor_midpoint_force = zeros(3,1);
+            end
             
             % Law 2: neighbor distance force
-            neighbor_dist_force = zeros(3,1);
+            neighbor_dist_force = zeros(3,1); % init
             neighbor_IDs = obj.viewable_neighbor_ID;
+
             for i=1:numel(neighbor_IDs)
                 neighbor = getHandleOfAgent(neighbor_IDs(i));
                 
@@ -192,19 +204,27 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
                 abs_spring_deflection = obj.view_dist-norm(pos_diff_vector);
                 deflection_vector = abs_spring_deflection * pos_diff_vector/norm(pos_diff_vector);
                 
-                damping_vector = neighbor.getVel() - obj.vel;
+                velocity_difference = neighbor.getVel() - obj.vel;
                 
-                neighbor_dist_force = neighbor_dist_force - obj.k_dist * deflection_vector + obj.d_dist * damping_vector; % Hooke's Law with damping: F = -k*x
+                neighbor_dist_force = neighbor_dist_force - obj.k_dist * deflection_vector + obj.d_dist * velocity_difference; % Hooke's Law with damping: F = -k*x
             end
-
+            
             % ... this also counts for objects that are in the way
             
             % and for the borders of the defined space
+
+            if active_swarm_laws(2) == 0
+                neighbor_dist_force = zeros(3,1);
+            end
             
             % Law 3: neighbor direction/heading force
             neighbor_dir_force =  zeros(3,1);
-            urge_force = zeros(3,1);
-
+            urge_force = zeros(3,1); % maybe another force for urges --> food, shelter, sleep
+            
+            if active_swarm_laws(3) == 0
+                neighbor_dir_force = zeros(3,1);
+            end
+            
             % vector sum of all forces pulling/pushing on the agent
             force_vec = neighbor_midpoint_force + neighbor_dist_force...
                         + neighbor_dir_force + urge_force;

@@ -13,6 +13,7 @@ function plotSwarm()
             view(0,90); % view from above
 
             set(gcf,'position',[10,40,1600,900]);
+%             set(gcf,'position',[800,300,800,600]);
         end
 %         hold on
 %         quiver(position(1),position(2),velocity(1)*step_size,velocity(2)*step_size,50,'linewidth',4,'color','c')

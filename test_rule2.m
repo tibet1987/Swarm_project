@@ -24,8 +24,8 @@ step_size = 0.02;
 % agent parameters
 view_dist = 1;  % [m] how far can the agent see
 mass = 0.3;  % [kg], mass of agent
-k_dist = 1; % stiffness of virtual spring between too close neighbors and agent
-d_dist = 0.08; % virtual damping between too close neighbors and agent
+k_dist = 5; % stiffness of virtual spring between too close neighbors and agent
+d_dist = 0.5; % virtual damping between too close neighbors and agent
 
 
 %% Initialize test
