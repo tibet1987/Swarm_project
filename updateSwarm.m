@@ -8,10 +8,14 @@ function updateSwarm()
     % updating states of movement dynamics
     global step_size
     for i=1:numel(agent_list)
-        
-        forces = agent_list(i).handle.calcAllForces(); % returns a force vector
-        % update dynamic (mechanical) states
-        agent_list(i).handle.updateDynamics(forces);
-
+        % IMPORTANT: 
+        %   FIRST:  Calculate respecive forces based on current states
+        %   SECOND: Update dynamic states based on those forces
+        forces(:,i) = agent_list(i).handle.calcAllForces(); % returns a force vector
+    end
+    
+    for i=1:numel(agent_list)
+    % update dynamic (mechanical) states
+        agent_list(i).handle.updateDynamics(forces(:,i));
     end
 end

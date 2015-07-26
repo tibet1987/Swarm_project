@@ -59,7 +59,7 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
             obj.ID = numel(agent_list)+1;
             obj.view_dist = 0.5;
             obj.m = 0.3;
-            obj.k_dist = 10;
+            obj.k_dist = 1;
             obj.d_dist = 1;
             obj.viewable_neighbor_ID = [];
             
@@ -186,7 +186,10 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
             neighbor_IDs = obj.viewable_neighbor_ID;
             for i=1:numel(neighbor_IDs)
                 neighbor = getHandleOfAgent(neighbor_IDs(i));
-                neighbor_dist_force = neighbor_dist_force - obj.k_dist * (neighbor.getPos() - obj.pos); % Hooke's Law: F = -k*x
+                diff_vector = neighbor.getPos() - obj.pos;
+                abs_spring_deflection = obj.view_dist-norm(diff_vector);
+                deflection_vector = abs_spring_deflection * diff_vector/norm(diff_vector);
+                neighbor_dist_force = neighbor_dist_force - obj.k_dist * deflection_vector; % Hooke's Law: F = -k*x
             end
 
             % Law 3: neighbor direction/heading force
