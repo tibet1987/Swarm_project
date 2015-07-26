@@ -13,9 +13,12 @@
 clear all, close all;
 clc;
 
+%% setting paths
+addpath 01_swarm_functions
+
 %% First test --> Law 2: "Move away if someone get too close to you"
-test_rule2;
+% test_rule2;
 
 %% Second test --> Adding Law 1: "Move towards the midpoint of those agents
 %%                                you see in your surrounding"
-
+test_rule1;
