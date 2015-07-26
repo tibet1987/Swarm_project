@@ -60,7 +60,7 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
             obj.view_dist = 0.5;
             obj.m = 0.3;
             obj.k_dist = 1;
-            obj.d_dist = 1;
+            obj.d_dist = 0.08;
             obj.viewable_neighbor_ID = [];
             
             % checking varargin
@@ -176,8 +176,9 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
         end
         
         function force_vec = calcAllForces( obj )
-            % calculating forces of the 3 laws:
             
+            % calculating forces of the 3 laws:
+
             % Law 1: midpoint force
             neighbor_midpoint_force =  zeros(3,1);
             
@@ -186,12 +187,20 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
             neighbor_IDs = obj.viewable_neighbor_ID;
             for i=1:numel(neighbor_IDs)
                 neighbor = getHandleOfAgent(neighbor_IDs(i));
-                diff_vector = neighbor.getPos() - obj.pos;
-                abs_spring_deflection = obj.view_dist-norm(diff_vector);
-                deflection_vector = abs_spring_deflection * diff_vector/norm(diff_vector);
-                neighbor_dist_force = neighbor_dist_force - obj.k_dist * deflection_vector; % Hooke's Law: F = -k*x
+                
+                pos_diff_vector = neighbor.getPos() - obj.pos;
+                abs_spring_deflection = obj.view_dist-norm(pos_diff_vector);
+                deflection_vector = abs_spring_deflection * pos_diff_vector/norm(pos_diff_vector);
+                
+                damping_vector = neighbor.getVel() - obj.vel;
+                
+                neighbor_dist_force = neighbor_dist_force - obj.k_dist * deflection_vector + obj.d_dist * damping_vector; % Hooke's Law with damping: F = -k*x
             end
 
+            % ... this also counts for objects that are in the way
+            
+            % and for the borders of the defined space
+            
             % Law 3: neighbor direction/heading force
             neighbor_dir_force =  zeros(3,1);
             urge_force = zeros(3,1);
