@@ -17,7 +17,7 @@ clc;
 global space_lims       % size of space where agents move in
 space_lims = 5*[1,1,1]'; %[x,y,z]
 global step_size
-step_size = 0.02;
+step_size = 0.001;
 
 
 % agent parameters
@@ -29,23 +29,31 @@ d_dist = 0.5; % virtual damping between too close neighbors and agent
 
 
 %% Initialize test
-
+fprintf('Generating agents...')
 % creating agents
 myagent(1) = swarm_agent(-3*[1,0,0]',5  *[1,0,0]','view_dist',view_dist,...
                 'mass',mass,'k_dist',k_dist,'d_dist',d_dist,'too_close_dist',too_close_dist);
 %%%%%%%%%%%%%%%
 myagent(2) = swarm_agent(3*[1,0,0]',-5*[1,0,0]','view_dist',view_dist,...
                 'mass',mass,'k_dist',k_dist,'d_dist',d_dist,'too_close_dist',too_close_dist);
-            
+num_agents = numel(myagent);
+fprintf(' done!\n')
 
-% global agent_list
 
+%% preparing simulation 
 T_end = 30; % simulation end time in seconds
+global agent_list
+for i=1:num_agents
+    recorder(i).agentPos = zeros(3,T_end/step_size);
+end
 
+%% simulating
+fprintf('Simulating swarm...')
 for i=1:T_end/step_size
-    plotSwarm();
     updateSwarm();
-    
+    for k=1:num_agents
+        recorder(k).agentPos(:,i) = agent_list(k).handle.getPos;
+    end
 % 	[agents_see_each_other,agents_are_too_close] = checkIfAgentsSeeEachOther(agent_list(1).handle,agent_list(2).handle);
 %     if agents_see_each_other
 %         if agents_are_too_close
@@ -56,9 +64,14 @@ for i=1:T_end/step_size
 %     else
 %         disp('Agent1 & Agent2 do not see each other')
 %     end
-    
-    drawnow;
-    pause(0.01)
+	if mod(i,T_end/step_size/10) == 0
+        fprintf('.')
+	end
 end
+fprintf(' done!\n')
 
+%% now plotting the results
+close all
+fprintf('Plotting simulated data swarm\n')
+plotSimulatedData(recorder);
 
