@@ -22,7 +22,8 @@ step_size = 0.02;
 
 
 % agent parameters
-view_dist = 1;  % [m] how far can the agent see
+view_dist = 3;  
+too_close_dist = 1; 
 mass = 0.3;  % [kg], mass of agent
 k_dist = 5; % stiffness of virtual spring between too close neighbors and agent
 d_dist = 0.5; % virtual damping between too close neighbors and agent
@@ -31,14 +32,14 @@ d_dist = 0.5; % virtual damping between too close neighbors and agent
 %% Initialize test
 
 % creating agents
-myagent(1) = swarm_agent(-1*[1,0,0]',2  *[1,0,0]','view_dist',view_dist,...
-                'mass',mass,'k_dist',k_dist,'d_dist',d_dist);
+myagent(1) = swarm_agent(-2*[1,0,0]',2  *[1,0,0]','view_dist',view_dist,...
+                'mass',mass,'k_dist',k_dist,'d_dist',d_dist,'too_close_dist',too_close_dist);
 %%%%%%%%%%%%%%%
-myagent(2) = swarm_agent(1*[1,0,0]',-2*[1,0,0]','view_dist',view_dist,...
-                'mass',mass,'k_dist',k_dist,'d_dist',d_dist);
+myagent(2) = swarm_agent(2*[1,0,0]',-2*[1,0,0]','view_dist',view_dist,...
+                'mass',mass,'k_dist',k_dist,'d_dist',d_dist,'too_close_dist',too_close_dist);
 %%%%%%%%%%%%%%%
 % myagent(3) = swarm_agent(1*[0,1,0]',1*[0,1,0]','view_dist',view_dist,...
-%                 'mass',mass,'k_dist',k_dist,'d_dist',d_dist);
+%                 'mass',mass,'k_dist',k_dist,'d_dist',d_dist,'too_close_dist',too_close_dist);
             
 % testing some agent operations
 % agent_distance = myagent(1).calcDistance(myagent(2))
@@ -48,15 +49,21 @@ myagent(2) = swarm_agent(1*[1,0,0]',-2*[1,0,0]','view_dist',view_dist,...
 % myagent.updateNeighborList()
 global agent_list 
 
-for i=1:200
+for i=1:300
     plotSwarm();
     updateSwarm();
     
-    agent_list(1).handle.getNeighborIDs
-    agent_list(2).handle.getNeighborIDs
     
-    if ~isempty(agent_list(1).handle.getNeighborIDs)
-        stop = 1;
+    [agents_see_each_other,agents_are_too_close] = checkIfAgentsSeeEachOther(agent_list(1).handle,agent_list(2).handle);
+    
+    if agents_see_each_other
+        if agents_are_too_close
+            disp('Agent1 & Agent2 see each other and are too close')
+        else
+            disp('Agent1 & Agent2 see each other')
+        end
+    else
+        disp('Agent1 & Agent2 do not see each other')
     end
     
     drawnow;

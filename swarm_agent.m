@@ -11,14 +11,18 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
         %   these values are accessible via 'get...' functions
         pos    % current position vector of the agent
         vel    % current velocity vector of the agent
-        viewable_neighbor_ID % list of neighbors in viewable distance
+        viewable_neighbor_ID % viewable_neighbor_ID --> neighbors in viewable distance
+        too_close_neighbor_ID % too_close_neighbor_ID --> neighbors that are too close (Law2)
         
         % parameters (static during simulation)
         ID           % unique ID number
         view_dist    % [m] agents view horizon
+        too_close_dist % [m] <= view_dist, distance to viewable neighbor that is too close
         m            % [kg] mass
-        k_dist % [N/m] stiffness of virtual spring-damper to neighbor
-        d_dist % [Ns/m]damping of virtual spring-damper to neighbor
+        k_dist % [N/m] stiffness of virtual spring to neighbor
+        d_dist % [Ns/m]damping of virtual damper to neighbor
+        k_midpnt % [N/m] stiffness of virtual spring to neighbor midpoint
+        d_midpnt % [Ns/m]damping of virtual damper to neighbor midpoint
         
         % non-states
         %neighbor_midpoint_force; % vector of force that pulls agent towards midpoint of neighbors (rule 1)
@@ -57,11 +61,15 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
         
             % default settings for agent
             obj.ID = numel(agent_list)+1;
-            obj.view_dist = 0.5;
+            obj.view_dist = 2;
+            obj.too_close_dist = 1;
             obj.m = 0.3;
             obj.k_dist = 1;
             obj.d_dist = 0.08;
+            obj.k_midpnt = 0.1;
+            obj.d_midpnt = 0.01;
             obj.viewable_neighbor_ID = [];
+            
             if isempty(active_swarm_laws)
                 % if not defined otherwise: enable all swarm laws
                 active_swarm_laws = [1,1,1];  
@@ -75,11 +83,17 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
             for i=1:numel(varargin)/2   
                 if strcmpi(varargin{2*i-1},'view_dist')
                     obj.view_dist = varargin{2*i};
+                elseif strcmpi(varargin{2*i-1},'too_close_dist')
+                    obj.too_close_dist = varargin{2*i};
                 elseif strcmpi(varargin{2*i-1},'mass')
                     obj.m = varargin{2*i};
                 elseif strcmpi(varargin{2*i-1},'k_dist')
                     obj.k_dist = varargin{2*i};
                 elseif strcmpi(varargin{2*i-1},'d_dist')
+                    obj.d_dist = varargin{2*i};
+                elseif strcmpi(varargin{2*i-1},'k_midpnt')
+                    obj.k_dist = varargin{2*i};
+                elseif strcmpi(varargin{2*i-1},'d_midpnt')
                     obj.d_dist = varargin{2*i};
                 end
             end
@@ -88,7 +102,7 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
             if ~isequal(size(pos),[3,1]) && ~isequal(size(pos),[1,3])
                 error('swarm_agent constructor: wrong dimensions for ''pos''');
             end
-            obj.pos = pos; 
+            obj.pos = pos;
             
             % initializing velocity vector
             if ~isequal(size(vel),[3,1]) && ~isequal(size(vel),[1,3])
@@ -101,7 +115,6 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
                 agent_list(1).handle = handle(obj); 
             else
                 agent_list(end+1).handle = handle(obj);
-                
                 % looking for neighbors that are already around
                 obj.updateNeighborList();
             end
@@ -118,30 +131,30 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
         end
         
         function ID = getID( obj ) 
-        % return velocity vector of this swarm agent
+        % return unique ID of this swarm agent
             ID = obj.ID;
         end
         
         function m = getMass( obj ) 
-        % return velocity vector of this swarm agent
+        % return mass of this swarm agent
             m = obj.m;
         end
         
-        function ID = getNeighborIDs( obj ) 
-        % return velocity vector of this swarm agent
-            ID = obj.viewable_neighbor_ID;
+        function isNeighbor = checkIfIsNeighbor( obj , neighborID ) 
+        % check if a an agent (with ID) is a neighbor
+            isNeighbor = any(obj.viewable_neighbor_ID == neighborID);
         end
         
         function appendNeighbor( obj, neighborID )
         % add a new neighbor ID to agents list of viewable neighbors
-            obj.viewable_neighbor_ID(end+1) = neighborID;
+            obj.viewable_neighbor_ID(1,end+1) = neighborID;
         % sorting neighbor IDs in ascending order
-            obj.viewable_neighbor_ID = sort(obj.viewable_neighbor_ID);
+%             obj.viewable_neighbor_ID = sort(obj.viewable_neighbor_ID);
         end
         
-        function found = removeNeighbor( obj, neighbor_ID )
+        function found = removeNeighbor( obj, neighborID )
         % remove a neighbor ID from agents list of viewable neighbors
-            idx = find(obj.viewable_neighbor_ID == neighbor_ID);
+            idx = find(obj.viewable_neighbor_ID == neighborID);
             if isempty(idx)
                 found = 0;
                 disp(['Method ''removeNeighbor'' of object in class',...
@@ -155,6 +168,32 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
             end
         end
         
+        function addNeighborFromCloseList( obj, neighborID )
+        % add a new neighbor ID to agents list of too close neighbors
+            obj.too_close_neighbor_ID(1,end+1) = neighborID;
+        end
+        
+        function isTooClose = isNeighborTooClose( obj, neighborID )
+        % add a new neighbor ID to agents list of too close neighbors
+            isTooClose = any(obj.too_close_neighbor_ID == neighborID);
+        end
+        
+        function found = removeNeighborFromCloseList( obj, neighborID )
+        % remove a neighbor ID from agents list of too close neighbors
+            idx = find(obj.too_close_neighbor_ID == neighborID);
+            if isempty(idx)
+                found = 0;
+                disp(['Method ''removeNeighbor'' of object in class',...
+                    '''swarm_agent'': Neighbor not found, could not ',...
+                    'remove neighbor']);
+            else
+                found = 1;
+                obj.too_close_neighbor_ID(idx) = [];
+                % sorting entries in ascending order
+                obj.too_close_neighbor_ID = sort(obj.too_close_neighbor_ID);
+            end
+        end
+        
         function updateNeighborList( obj )
             global agent_list
 
@@ -165,14 +204,40 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
                 dist = obj.calcDistance(agent_list(i).handle);
                 
                 % is this agent already in neighbor list?
-                alreadyInList = ~isempty( find(obj.getNeighborIDs() == agent_list(i).handle.getID(),1,'first') );
+                alreadyInNeighborList = obj.checkIfIsNeighbor( agent_list(i).handle.getID() );
+                isInTooCloseList = obj.isNeighborTooClose( agent_list(i).handle.getID() ); 
                 object_is_not_myself = obj.ID ~= agent_list(i).handle.getID();
                 
-                if dist <= obj.view_dist  && object_is_not_myself && ~alreadyInList
+                if dist <= obj.view_dist  && object_is_not_myself && ~alreadyInNeighborList
+                    % other agent is within viewable range
+                    % he is not myself and he is not yet in neighbor list 
+                    % --> put him on neighbor list
                     obj.appendNeighbor( agent_list(i).handle.getID() );
-                elseif dist > obj.view_dist  &&  alreadyInList
+                    
+                elseif dist <= obj.view_dist && object_is_not_myself && alreadyInNeighborList
+                    % other agent is within viewable range
+                    % he is not myself and 
+                    % he is in the neighbor list 
+                    %   --> check if agent is too close
+                    if dist <= obj.too_close_dist && ~isInTooCloseList
+                        % if other agent closer than 'too_close_dist', if he is
+                        % not myself and if he is a neighbor --> he is too
+                        % close
+                        obj.addNeighborFromCloseList(  agent_list(i).handle.getID() );
+                    elseif dist > obj.too_close_dist && isInTooCloseList
+                        % if other agent not closer than 'too_close_dist' 
+                        % anymore, if he is not myself and if he is a neighbor 
+                        % --> set him to "not close"
+                        obj.removeNeighborFromCloseList(  agent_list(i).handle.getID() );
+                    end
+                    
+                elseif dist > obj.view_dist  &&  alreadyInNeighborList
+                    % if other agent is not in viewable range but he is in
+                    % the neighbor list --> remove him from the list
                     obj.removeNeighbor( agent_list(i).handle.getID() );
+                    
                 end
+
             end
 
         end
@@ -186,37 +251,73 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
         function force_vec = calcAllForces( obj )
             % calculating forces of the 3 laws:
             global active_swarm_laws
+            global space_lims
             
+            % -------------------------------------------
             % Law 1: midpoint force
             neighbor_midpoint_force =  zeros(3,1); % init
-            if active_swarm_laws(1) == 0
-                neighbor_midpoint_force = zeros(3,1);
+            
+            if active_swarm_laws(1) == 1 % only evaluate if Law1 is active
+                if ~isempty(obj.viewable_neighbor_ID)
+                    midpoint_sum = zeros(3,1);
+                    for i=1:numel(obj.viewable_neighbor_ID)
+                        neighbor = getHandleOfAgent(obj.viewable_neighbor_ID(i));
+                        midpoint_sum = midpoint_sum+neighbor.getPos();
+                    end
+                    midpoint = midpoint_sum/numel(obj.viewable_neighbor_ID);
+                    neighbor_midpoint_force = -obj.k_midpnt * (midpoint - obj.pos);
+                end
             end
             
+            % -------------------------------------------
             % Law 2: neighbor distance force
             neighbor_dist_force = zeros(3,1); % init
-            neighbor_IDs = obj.viewable_neighbor_ID;
+            
+            if active_swarm_laws(2) == 1
+                if ~isempty(obj.too_close_neighbor_ID)
+                    for i=obj.too_close_neighbor_ID % only those neighbors that are too close
+                        % if he is in viewable range and if he is too close -->
+                        % take evasive action
+                        neighbor = getHandleOfAgent(i);
 
-            for i=1:numel(neighbor_IDs)
-                neighbor = getHandleOfAgent(neighbor_IDs(i));
+                        pos_diff_vector = neighbor.getPos() - obj.pos;
+                        abs_spring_deflection = obj.too_close_dist - norm(pos_diff_vector);
+                        deflection_vector = abs_spring_deflection * pos_diff_vector/norm(pos_diff_vector);
+
+                        velocity_difference = obj.vel - neighbor.getVel();
+                        
+                        % Hooke's Law with damping: F = -k*x + D*x_dot
+                        neighbor_dist_force = neighbor_dist_force - obj.k_dist * deflection_vector - obj.d_dist * velocity_difference;
+                    end
+%                 else
+%                     if obj.ID == 1
+%                         obj.vel
+%                     end
+                end
                 
-                pos_diff_vector = neighbor.getPos() - obj.pos;
-                abs_spring_deflection = obj.view_dist-norm(pos_diff_vector);
-                deflection_vector = abs_spring_deflection * pos_diff_vector/norm(pos_diff_vector);
+                % ... also move away from the borders of the defined space
+                xlim_violated = abs( abs(obj.pos(1)) - space_lims(1) ) < obj.too_close_dist;
+                ylim_violated = abs( abs(obj.pos(2)) - space_lims(2) ) < obj.too_close_dist;
+                zlim_violated = abs( abs(obj.pos(3)) - space_lims(3) ) < obj.too_close_dist;
+                if xlim_violated || ylim_violated || zlim_violated
+                    % agent too close to space border
+                    dist_to_space_border = - sign(obj.pos).* (space_lims-obj.too_close_dist - abs(obj.pos));
+                    neighbor_dist_force = neighbor_dist_force - obj.k_dist * dist_to_space_border - obj.d_dist * obj.vel;
+%                 else
+%                     if obj.ID == 1
+%                         obj.vel
+%                     end
+                end
+                    
+                % and for objects that are in the way
                 
-                velocity_difference = neighbor.getVel() - obj.vel;
-                
-                neighbor_dist_force = neighbor_dist_force - obj.k_dist * deflection_vector + obj.d_dist * velocity_difference; % Hooke's Law with damping: F = -k*x
             end
             
-            % ... this also counts for objects that are in the way
             
-            % and for the borders of the defined space
 
-            if active_swarm_laws(2) == 0
-                neighbor_dist_force = zeros(3,1);
-            end
             
+            
+            % -------------------------------------------
             % Law 3: neighbor direction/heading force
             neighbor_dir_force =  zeros(3,1);
             urge_force = zeros(3,1); % maybe another force for urges --> food, shelter, sleep
@@ -249,7 +350,8 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
                 B = [0; 1/obj.getMass()];
                 x_dot = A*x + B*u;
 
-                % solving dynamics with euler forward
+                % solving dynamics with euler forward (explicit)
+                % x_(k+1) = x(k) + h * f( x(k) , t(k) ) 
                 obj.pos(coord) = obj.pos(coord) + step_size*x_dot(1);
                 obj.vel(coord) = obj.vel(coord) + step_size*x_dot(2);
             end
