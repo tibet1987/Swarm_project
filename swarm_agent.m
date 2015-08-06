@@ -301,7 +301,8 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
                 zlim_violated = abs( abs(obj.pos(3)) - space_lims(3) ) < obj.too_close_dist;
                 if xlim_violated || ylim_violated || zlim_violated
                     % agent too close to space border
-                    dist_to_space_border = - sign(obj.pos).* (space_lims-obj.too_close_dist - abs(obj.pos));
+                    viol_vector = [xlim_violated; ylim_violated; zlim_violated];
+                    dist_to_space_border = - sign(obj.pos).* (space_lims-obj.too_close_dist - abs(obj.pos)) .* viol_vector;
                     neighbor_dist_force = neighbor_dist_force - obj.k_dist * dist_to_space_border - obj.d_dist * obj.vel;
 %                 else
 %                     if obj.ID == 1

@@ -25,16 +25,16 @@ view_dist = 3;  % [m] how far can the agent see
 too_close_dist = 1; % if agents get closer than this radius, the agent moves away
 mass = 0.3;  % [kg], mass of agent
 k_dist = 20; % stiffness of virtual spring between too close neighbors and agent
-d_dist = 0.5; % virtual damping between too close neighbors and agent
+d_dist = 0.1; % virtual damping between too close neighbors and agent
 
 
 %% Initialize test
 fprintf('Generating agents...')
 % creating agents
-myagent(1) = swarm_agent(-3*[1,0,0]',5  *[1,0,0]','view_dist',view_dist,...
+myagent(1) = swarm_agent(-3*[1,1,0]',5  *[1,0.95,0]','view_dist',view_dist,...
                 'mass',mass,'k_dist',k_dist,'d_dist',d_dist,'too_close_dist',too_close_dist);
 %%%%%%%%%%%%%%%
-myagent(2) = swarm_agent(3*[1,0,0]',-5*[1,0,0]','view_dist',view_dist,...
+myagent(2) = swarm_agent(3*[1,1,0]',-5*[1,0.95,0]','view_dist',view_dist,...
                 'mass',mass,'k_dist',k_dist,'d_dist',d_dist,'too_close_dist',too_close_dist);
 num_agents = numel(myagent);
 fprintf(' done!\n')
