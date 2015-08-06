@@ -265,7 +265,7 @@ classdef swarm_agent < handle % is a subclass of the 'Handle' class --> objects 
                         midpoint_sum = midpoint_sum+neighbor.getPos();
                     end
                     midpoint = midpoint_sum/numel(obj.viewable_neighbor_ID);
-                    neighbor_midpoint_force = -obj.k_midpnt * (midpoint - obj.pos);
+                    neighbor_midpoint_force = obj.k_midpnt * (midpoint - obj.pos);
                 end
             end
             

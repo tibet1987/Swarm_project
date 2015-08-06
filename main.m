@@ -17,12 +17,12 @@ clc;
 addpath 01_swarm_functions
 
 %% First test --> Law 2: "Move away if someone gets too close to you"
-global active_swarm_laws
-active_swarm_laws = [0,1,0];    % only second swarm law enabled
-test_rule2;
+% global active_swarm_laws
+% active_swarm_laws = [0,1,0];    % only second swarm law enabled
+% test_rule2;
 
 %% Second test --> Adding Law 1: "Move towards the midpoint of those agents
 %%                                you see in your surrounding"
-% global active_swarm_laws
-% active_swarm_laws = [0,1,0];    % first and second swarm law enabled
-% test_rule1;
+global active_swarm_laws
+active_swarm_laws = [1,1,0];    % first and second swarm law enabled
+test_rule12;

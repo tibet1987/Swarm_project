@@ -7,7 +7,7 @@ function plotSimulatedData(recorder)
     num_sim_steps = size(recorder(1).agentPos,2);
     n = 1;
     %% Test run to determine plot duration
-    for i=1:5
+	for i=1:5 % five test samples 
         tic;
 %                 scatter3(obj(i).pos(1),obj(i).pos(2),obj(i).pos(3),'*','MarkerSize',20)
         for k = 1:numel(recorder) % number of active agents in swarm
@@ -30,8 +30,9 @@ function plotSimulatedData(recorder)
         hold off
         plotDuration(n) = toc;
         n = n+1;
-	end
-    meanPlotDuration = mean(plotDuration(2:end));
+    end
+    % not considering the first time sample because the first sample takes a little longer
+    meanPlotDuration = mean(plotDuration(2:end)); 
     
     
     %% Main run
@@ -63,5 +64,5 @@ function plotSimulatedData(recorder)
         hold off
         plotDuration(n) = toc;
 	end
-    meanPlotDuration = mean(plotDuration)
+    meanPlotDuration = mean(plotDuration);
 end
